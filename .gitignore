@@ -1,0 +1,26 @@
+# Large source and converted data files (not for version control)
+assets/Belege_aus_D.csv
+assets/Belege_aus_D_2.csv
+assets/Belege_aus_D*.xlsx
+
+# Nextflow run artefacts
+work/
+.nextflow/
+.nextflow.log*
+results/
+results_test/
+test_results/
+pipeline_info/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+*.egg-info/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
