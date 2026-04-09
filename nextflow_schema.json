@@ -41,20 +41,20 @@
             "properties": {
                 "id_column": {
                     "type": "string",
-                    "default": "id",
+                    "default": "HerbariumID",
                     "description": "Name of the unique record identifier column.",
                     "fa_icon": "fas fa-fingerprint"
                 },
                 "land_text_column": {
                     "type": "string",
-                    "default": "text_land",
-                    "description": "Column containing habitat/locality text for the Land Taxonomy Classifier.",
+                    "default": "FundortUNdOeko",
+                    "description": "Column containing habitat/ecology text for the Land Taxonomy Classifier.",
                     "fa_icon": "fas fa-map-marker-alt"
                 },
                 "biodiv_text_column": {
                     "type": "string",
-                    "default": "text_biodiv",
-                    "description": "Column containing species name text for the BiodivPortal Annotator.",
+                    "default": "FullNameCache",
+                    "description": "Column containing species name for the BiodivPortal Annotator.",
                     "fa_icon": "fas fa-leaf"
                 }
             }
