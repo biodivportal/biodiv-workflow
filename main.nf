@@ -145,7 +145,7 @@ workflow {
 
     // Parse CSV → (id, text_land, text_biodiv) tuples
     Channel.fromPath(params.input, checkIfExists: true)
-        .splitCsv(header: true, sep: ',', strip: true)
+        .splitCsv(header: true, sep: ',')
         .map { row ->
             def id          = row[params.id_column]?.trim()
             def text_land   = row[params.land_text_column]?.trim()  ?: ""
