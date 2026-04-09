@@ -139,22 +139,42 @@ workflow.onComplete {
 
 
 // ---------------------------------------------------------------------------
+// Process: parse input CSV using Python (handles quoted commas correctly)
+// ---------------------------------------------------------------------------
+process PARSE_INPUT {
+    container "python:3.11-slim"
+
+    input:
+    path csv_file
+
+    output:
+    path 'records.tsv', emit: records
+
+    script:
+    def max_arg = params.max_records ? "--max-rows ${params.max_records}" : ""
+    """
+    python3 ${projectDir}/bin/parse_input.py \
+        --input      '${csv_file}' \
+        --id-col     '${params.id_column}' \
+        --land-col   '${params.land_text_column}' \
+        --biodiv-col '${params.biodiv_text_column}' \
+        ${max_arg} \
+        --output     records.tsv
+    """
+}
+
+
+// ---------------------------------------------------------------------------
 // Main workflow
 // ---------------------------------------------------------------------------
 workflow {
 
-    // Parse CSV → (id, text_land, text_biodiv) tuples
-    Channel.fromPath(params.input, checkIfExists: true)
-        .splitCsv(header: true, sep: ',')
-        .map { row ->
-            def id          = row[params.id_column]?.trim()
-            def text_land   = row[params.land_text_column]?.trim()  ?: ""
-            def text_biodiv = row[params.biodiv_text_column]?.trim() ?: ""
-            if (!id) { return null }
-            return tuple(id, text_land, text_biodiv)
-        }
-        .filter { it != null }
-        .take( params.max_records ? (params.max_records as int) : -1 )
+    // Parse CSV with Python (avoids Nextflow splitCsv column-shift bug on quoted commas)
+    PARSE_INPUT(Channel.fromPath(params.input, checkIfExists: true))
+
+    PARSE_INPUT.out.records
+        .splitCsv(header: true, sep: '\t')
+        .map { row -> tuple(row.id, row.text_land ?: "", row.text_biodiv ?: "") }
         .set { limited_ch }
 
     // Route each record to the right service
