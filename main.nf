@@ -154,11 +154,8 @@ workflow {
             return tuple(id, text_land, text_biodiv)
         }
         .filter { it != null }
-        .set { records_ch }
-
-    def limited_ch = params.max_records
-        ? records_ch.take(params.max_records as int)
-        : records_ch
+        .take( params.max_records ? (params.max_records as int) : -1 )
+        .set { limited_ch }
 
     // Route each record to the right service
     limited_ch
