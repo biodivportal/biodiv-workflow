@@ -23,7 +23,7 @@ def call_annotator(base_url: str, text: str, apikey: str, ontologies: str) -> di
     """
     Call the BiodivPortal annotator endpoint and return the parsed JSON response.
     """
-    params = {"text": text}
+    params = {"text": text, "include": "prefLabel"}
     if apikey:
         params["apikey"] = apikey
     if ontologies:
