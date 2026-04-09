@@ -62,24 +62,28 @@ def summarise_biodiv(data: dict) -> dict:
 
 
 def summarise_land(data: dict) -> dict:
-    results = data.get("results", [])
-    if not results:
+    matches = data.get("matches", data.get("results", []))
+    if not matches:
         return {
-            "land_top_code":          "",
-            "land_top_name":          "",
-            "land_top_confidence":    "",
-            "land_top_reasoning":     "",
+            "land_top_code":            "",
+            "land_top_name":            "",
+            "land_top_confidence":      "",
+            "land_top_reasoning":       "",
             "land_all_classifications": "[]",
-            "classification_error":   str(data.get("error", True)),
+            "classification_error":     str(data.get("error", True)),
         }
-    best = results[0]
+    best = matches[0]
+    # The classifier returns nested level1/level2/level3; use level3 (most specific)
+    level3 = best.get("level3", {})
+    level2 = best.get("level2", {})
+    top_level = level3 if level3 else level2
     return {
-        "land_top_code":          best.get("clc_code", best.get("code", "")),
-        "land_top_name":          best.get("name", ""),
-        "land_top_confidence":    str(best.get("confidence", "")),
-        "land_top_reasoning":     best.get("reasoning", ""),
-        "land_all_classifications": json.dumps(results, ensure_ascii=False),
-        "classification_error":   str(data.get("error", False)),
+        "land_top_code":            top_level.get("clc_code", ""),
+        "land_top_name":            top_level.get("english_name", top_level.get("name", "")),
+        "land_top_confidence":      str(best.get("confidence", "")),
+        "land_top_reasoning":       best.get("reason", best.get("reasoning", "")),
+        "land_all_classifications": json.dumps(matches, ensure_ascii=False),
+        "classification_error":     str(data.get("error", False)),
     }
 
 
