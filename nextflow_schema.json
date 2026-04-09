@@ -47,8 +47,8 @@
                 },
                 "land_text_column": {
                     "type": "string",
-                    "default": "FundortUNdOeko",
-                    "description": "Column containing habitat/ecology text for the Land Taxonomy Classifier.",
+                    "default": "Locality",
+                    "description": "Column containing habitat/locality text for the Land Taxonomy Classifier.",
                     "fa_icon": "fas fa-map-marker-alt"
                 },
                 "biodiv_text_column": {

@@ -11,10 +11,9 @@ This guide walks you through setting up everything needed to run the **BiodivPor
 | WSL2 (Ubuntu) | Linux environment on Windows |
 | Java 17+ | Required by Nextflow |
 | Nextflow | Workflow engine |
-| nf-core tools | Pipeline utilities and linting |
-| Docker Desktop | Containerised process execution |
 | Python 3.10+ | Required by the local classifier service |
 | OpenAI API key | Used by the land-taxonomy-classifier |
+| BiodivPortal API key | Used by the BiodivPortal Annotator |
 
 ---
 
@@ -46,11 +45,11 @@ Nextflow requires Java 17 or later.
 sudo apt install -y openjdk-17-jdk
 ```
 
-Verify the installation:
+Verify:
 
 ```bash
 java -version
-# Expected output: openjdk version "17.x.x" ...
+# Expected: openjdk version "17.x.x" ...
 ```
 
 ---
@@ -58,73 +57,31 @@ java -version
 ## Step 3 — Install Nextflow
 
 ```bash
-# Download Nextflow launcher
 curl -s https://get.nextflow.io | bash
-
-# Make it executable and move to your PATH
 chmod +x nextflow
 sudo mv nextflow /usr/local/bin/
 
-# Verify
 nextflow -version
 ```
 
-You should see something like `nextflow version 24.x.x`.
-
 ---
 
-## Step 4 — Install nf-core Tools
+## Step 4 — Install the Land Taxonomy Classifier
 
-nf-core tools require Python 3.8+. Ubuntu 22.04 ships with Python 3.10, so we can install directly:
-
-```bash
-sudo apt install -y python3-pip python3-venv
-
-# Install nf-core
-pip3 install nf-core --break-system-packages
-
-# Verify
-nf-core --version
-```
-
----
-
-## Step 5 — Install Docker Desktop (Windows side)
-
-1. Download **Docker Desktop for Windows** from https://www.docker.com/products/docker-desktop/
-2. During installation, ensure **"Use WSL 2 based engine"** is checked.
-3. After install, open Docker Desktop → Settings → Resources → WSL Integration → Enable your Ubuntu distro.
-4. Back in your WSL2 terminal, verify:
+The `land-taxonomy-classifier` runs locally as a FastAPI service.
 
 ```bash
-docker run hello-world
-```
-
-> **Note:** Docker Desktop must be running in Windows whenever you run the workflow.
-
----
-
-## Step 6 — Install Python Dependencies for the Local Classifier
-
-The `land-taxonomy-classifier` service runs locally as a FastAPI application.
-
-```bash
-# Clone the repository
 git clone https://github.com/biodivportal/land-taxonomy-classifier.git
 cd land-taxonomy-classifier
 
-# Create a virtual environment
 python3 -m venv .venv
 source .venv/bin/activate
-
-# Install dependencies
 pip install -r requirements.txt
 
-# Set up environment variables
 cp .env.example .env
 ```
 
-Now open `.env` and add your OpenAI API key:
+Open `.env` and add your OpenAI API key:
 
 ```bash
 nano .env
@@ -133,75 +90,111 @@ nano .env
 
 ---
 
-## Step 7 — Start the Local Classifier Service
+## Step 5 — Start the Local Classifier Service
 
-The classifier must be running before you execute the workflow. Open a **separate terminal** in WSL2:
+The classifier must be running before you execute the workflow. Open a **separate terminal**:
 
 ```bash
 cd land-taxonomy-classifier
 source .venv/bin/activate
-uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
-You can verify it is running by visiting: http://127.0.0.1:8000
+Verify it is running: http://127.0.0.1:8000
 
 ---
 
-## Step 8 — Clone This Workflow
-
-In a new WSL2 terminal:
+## Step 6 — Clone This Workflow
 
 ```bash
-git clone https://github.com/YOUR_ORG/biodiv-workflow.git
+git clone https://github.com/biodivportal/biodiv-workflow.git
 cd biodiv-workflow
 ```
 
-Or simply copy this folder to your WSL2 home directory.
+---
+
+## Step 7 — Provide the Input Data File
+
+The input file `Belege_aus_D.csv` is **not included in this repository** and must be provided separately.
+
+WSL2 can access Windows files via `/mnt/c/`. For example:
+
+| Windows path | WSL2 path |
+|---|---|
+| `C:\Users\janfi\Downloads\Belege_aus_D_2.csv` | `/mnt/c/Users/janfi/Downloads/Belege_aus_D_2.csv` |
+
+Copy the source file into the `assets/` folder, then convert it once:
+
+```bash
+cp /mnt/c/Users/janfi/Downloads/Belege_aus_D_2.csv assets/
+python bin/convert_xlsx.py \
+    --input  assets/Belege_aus_D_2.csv \
+    --output assets/Belege_aus_D.csv
+```
 
 ---
 
-## Step 9 — Configure the Workflow
+## Step 8 — Configure the Workflow
 
-Open `nextflow.config` and set your **BiodivPortal API key** (if required):
+Open `nextflow.config` and set your **BiodivPortal API key**:
 
 ```bash
 nano nextflow.config
 ```
 
-Set the parameter:
+Set:
 
 ```groovy
-params.biodivportal_apikey = 'YOUR_API_KEY_HERE'
+biodivportal_apikey = "your-api-key-here"
 ```
 
-You can obtain a free API key by registering at https://biodivportal.gfbio.org/
+Get a free API key at https://biodivportal.gfbio.org/account
 
 ---
 
-## Step 10 — Run the Workflow
+## Step 9 — Run the Workflow
 
-Prepare your input file (see `assets/example_input.csv` for format), then run:
+Smoke-test with 5 records:
+
+```bash
+nextflow run main.nf -profile test
+```
+
+Full run:
 
 ```bash
 nextflow run main.nf \
-    --input assets/example_input.csv \
+    --input assets/Belege_aus_D.csv \
     --outdir results/
 ```
 
-Results will be written to `results/enriched_dataset.csv`.
+Results are written to `results/enriched_dataset.csv`.
+
+---
+
+## Optional: Docker
+
+If you prefer containerised execution, install [Docker Desktop](https://www.docker.com/products/docker-desktop/), enable WSL2 integration in Docker Desktop settings, then run:
+
+```bash
+nextflow run main.nf -profile docker --input assets/Belege_aus_D.csv --outdir results/
+```
 
 ---
 
 ## Troubleshooting
 
-**`docker: command not found`**
-Make sure Docker Desktop is running in Windows and WSL integration is enabled in Docker Desktop settings.
+**`Connection refused` when calling the local classifier**
+Make sure the uvicorn server is running in a separate terminal (Step 5).
+
+**BiodivPortal returns 401**
+Set `biodivportal_apikey` in `nextflow.config` or pass `--biodivportal_apikey YOUR_KEY`.
 
 **`nextflow: command not found`**
 Ensure `/usr/local/bin` is in your PATH: `echo $PATH`
 
-**`Connection refused` when calling the local classifier**
-Make sure the uvicorn server is running in a separate terminal window.
-
 **OpenAI API errors in the classifier**
-Check your `.env` file inside the `land-taxonomy-classifier` folder has a valid `OPENAI_API_KEY`.
+Check your `.env` file inside `land-taxonomy-classifier/` has a valid `OPENAI_API_KEY`.
+
+**Docker permission denied**
+Run `sudo usermod -aG docker $USER`, then close and reopen your WSL2 terminal.

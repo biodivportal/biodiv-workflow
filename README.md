@@ -7,12 +7,12 @@ A [Nextflow](https://www.nextflow.io/) workflow that enriches the **Belege_aus_D
 ## What This Workflow Does
 
 ```
-Belege_aus_D.csv  (id, text_land, text_biodiv, …)
+Belege_aus_D.csv  (HerbariumID, Locality, FullNameCache, …)
         │
         ├──────────────────────────────────────┐
         ▼                                      ▼
  BIODIV_ANNOTATE                         LAND_CLASSIFY
- text = text_biodiv (FullNameCache)      text = text_land (FundortUNdOeko / Locality)
+ text = FullNameCache                    text = Locality
  → ontology class annotations            → CORINE Land Cover categories
         │                                      │
         └─────────────────┬────────────────────┘
@@ -23,10 +23,10 @@ Belege_aus_D.csv  (id, text_land, text_biodiv, …)
 
 Each record is processed with **different text per service**:
 
-| Service | Text column | Content |
+| Service | Column | Content |
 |---|---|---|
-| **BiodivPortal Annotator** | `text_biodiv` | `FullNameCache` — scientific species name |
-| **Land Taxonomy Classifier** | `text_land` | `FundortUNdOeko` (ecological description) or `Locality` as fallback |
+| **BiodivPortal Annotator** | `FullNameCache` | Scientific species name |
+| **Land Taxonomy Classifier** | `Locality` | Collection site / habitat description |
 
 Both calls run **in parallel** per record.
 
@@ -36,75 +36,54 @@ Both calls run **in parallel** per record.
 
 ```
 biodiv-workflow/
-├── main.nf                          # Main workflow definition
+├── main.nf                          # Workflow: PARSE_INPUT → BIODIV_ANNOTATE + LAND_CLASSIFY → MERGE_RESULTS
 ├── nextflow.config                  # Parameters and execution profiles
+├── nextflow_schema.json             # nf-core parameter schema
 ├── INSTALL.md                       # Step-by-step installation guide
 ├── README.md                        # This file
 │
-├── modules/
-│   └── local/
-│       ├── biodiv_annotate/
-│       │   └── main.nf              # BIODIV_ANNOTATE process
-│       └── land_classify/
-│           └── main.nf              # LAND_CLASSIFY process
-│
 ├── bin/
-│   ├── convert_xlsx.py              # One-time utility: converts source file → pipeline CSV
+│   ├── parse_input.py               # Safely parses input CSV → TSV for Nextflow
 │   ├── call_annotator.py            # Calls BiodivPortal Annotator API
 │   ├── call_land_taxonomy.py        # Calls Land Taxonomy Classifier API
-│   └── merge_results.py             # Merges per-row JSON results → enriched CSV
+│   ├── merge_results.py             # Merges per-row JSON results → enriched CSV
+│   └── convert_xlsx.py              # One-time utility: flattens Belege_aus_D_2.csv source format
 │
 └── assets/
     ├── Belege_aus_D_2.csv           # Original source file (semicolon-delimited, ~109k records)
     ├── Belege_aus_D.csv             # Pipeline-ready CSV (produced by convert_xlsx.py)
-    ├── test_20.csv                  # 20-row test subset
-    └── example_input.csv            # Minimal generic example
+    └── test_20.csv                  # 20-row test subset (same format as Belege_aus_D.csv)
 ```
 
 ---
 
 ## Preparing the Input
 
-The pipeline expects a **comma-delimited CSV** with at minimum these columns:
+The pipeline reads the **Belege_aus_D.csv** directly using the original column names. No renaming is needed.
+
+Required columns:
 
 | Column | Description |
 |---|---|
-| `id` | Unique record identifier |
-| `text_land` | Habitat/locality text for the Land Taxonomy Classifier |
-| `text_biodiv` | Species name text for the BiodivPortal Annotator |
+| `HerbariumID` | Unique record identifier |
+| `Locality` | Collection site description — used by the Land Taxonomy Classifier |
+| `FullNameCache` | Scientific species name — used by the BiodivPortal Annotator |
 
-Convert the original source file once with:
+The source file (`Belege_aus_D_2.csv`) has an unusual format (semicolon-delimited outer CSV with full CSV strings packed into column 1). Convert it once with:
 
 ```bash
-pip install openpyxl   # only needed if converting from xlsx
 python bin/convert_xlsx.py \
     --input  assets/Belege_aus_D_2.csv \
-    --output assets/Belege_aus_D.csv \
-    --skip-empty-land
+    --output assets/Belege_aus_D.csv
 ```
 
-The converter maps source columns as follows:
-
-| Output column | Source column | Notes |
-|---|---|---|
-| `id` | `HerbariumID` | Unique specimen identifier |
-| `text_land` | `FundortUNdOeko` or `Locality` | FundortUNdOeko preferred when non-empty |
-| `text_biodiv` | `FullNameCache` | Scientific species name |
-| `locality` | `Locality` | Raw collection site string |
-| `fundort` | `FundortUNdOeko` | Ecological description |
-| `species` | `FullNameCache` | (same as text_biodiv, kept for reference) |
-| `family` | `Family` | Plant family |
-| `country` | `Country` | |
-| `latitude` | `Latitude` | |
-| `longitude` | `Longitude` | |
-| `barcode` | `Barcode` | |
-| `stable_uri` | `StableURI` | Persistent specimen URI |
+This produces a standard comma-delimited CSV with the original 23 column names intact.
 
 ---
 
 ## Quick Start
 
-> **Before running**, complete [INSTALL.md](INSTALL.md) and start the **land-taxonomy-classifier** service locally.
+> **Before running**, complete [INSTALL.md](INSTALL.md) and start the **land-taxonomy-classifier** service.
 
 ### 1. Start the local classifier (separate terminal)
 
@@ -114,37 +93,28 @@ source .venv/bin/activate
 uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
-### 2. Smoke-test with 20 records
+### 2. Smoke-test with 5 records
+
+```bash
+nextflow run main.nf -profile test
+```
+
+Results are written to `test_results/enriched_dataset.csv`.
+
+### 3. Full run
 
 ```bash
 nextflow run main.nf \
-    --input assets/test_20.csv \
-    --outdir results_test/
-```
-
-### 3. Smoke-test with 50 records from the full dataset
-
-```bash
-nextflow run main.nf -profile belege_test
-```
-
-### 4. Full run
-
-```bash
-nextflow run main.nf -profile belege
-```
-
-### 5. Check the output
-
-```bash
-cat results/enriched_dataset.csv
+    --input assets/Belege_aus_D.csv \
+    --outdir results/ \
+    --biodivportal_apikey YOUR_KEY
 ```
 
 ---
 
 ## Output Format
 
-`enriched_dataset.csv` contains all input columns plus:
+`enriched_dataset.csv` contains all original input columns plus:
 
 | New Column | Description |
 |---|---|
@@ -169,17 +139,17 @@ All parameters can be set in `nextflow.config` or passed on the command line.
 |---|---|---|
 | `--input` | *(required)* | Path to input CSV |
 | `--outdir` | `results` | Output directory |
-| `--id_column` | `id` | ID column name |
-| `--land_text_column` | `text_land` | Text column for Land Taxonomy Classifier |
-| `--biodiv_text_column` | `text_biodiv` | Text column for BiodivPortal Annotator |
+| `--id_column` | `HerbariumID` | ID column name |
+| `--land_text_column` | `Locality` | Text column for Land Taxonomy Classifier |
+| `--biodiv_text_column` | `FullNameCache` | Text column for BiodivPortal Annotator |
 | `--max_records` | *(all)* | Stop after N records (useful for testing) |
-| `--python_bin` | `python3` | Python interpreter path |
 | `--biodivportal_url` | `https://data.biodivportal.gfbio.org` | BiodivPortal base URL |
 | `--biodivportal_apikey` | *(empty)* | BiodivPortal API key |
 | `--biodivportal_ontologies` | *(empty)* | Restrict to specific ontologies |
 | `--land_classifier_url` | `http://127.0.0.1:8000` | Land classifier base URL |
 | `--land_classifier_top_k` | `5` | Number of classifications to return |
 | `--land_classifier_model` | `gpt-4o-mini` | OpenAI model for the classifier |
+| `--email` | *(empty)* | Email address for completion notification |
 
 ---
 
@@ -187,17 +157,15 @@ All parameters can be set in `nextflow.config` or passed on the command line.
 
 | Profile | Description |
 |---|---|
-| `standard` | Local execution without Docker (default) |
+| *(default)* | Local execution without Docker |
 | `docker` | Local execution using Docker containers |
-| `slurm` | HPC cluster with SLURM scheduler |
-| `belege` | Full Belege_aus_D run (all ~109k records) |
-| `belege_test` | Quick test: first 50 records from Belege_aus_D |
-| `test` | Minimal test using `example_input.csv` |
+| `singularity` | Execution using Singularity containers |
+| `test` | 5-record test run using `assets/test_20.csv` |
 
 ```bash
-nextflow run main.nf -profile belege_test   # 50 records, fast check
-nextflow run main.nf -profile belege        # full dataset
-nextflow run main.nf -profile test          # generic example CSV
+nextflow run main.nf -profile test                    # quick smoke-test
+nextflow run main.nf -profile docker --input ...      # with Docker
+nextflow run main.nf --input assets/Belege_aus_D.csv  # full run, no container
 ```
 
 ---
@@ -206,14 +174,14 @@ nextflow run main.nf -profile test          # generic example CSV
 
 ### BiodivPortal Annotator
 - **URL:** https://data.biodivportal.gfbio.org
-- **Endpoint:** `GET /annotator?text=<text>&apikey=<key>`
-- **Input text:** `text_biodiv` — scientific species name (`FullNameCache`)
-- **Registration:** Free API key at https://biodivportal.gfbio.org/
+- **Endpoint:** `GET /annotator?text=<text>&apikey=<key>&include=prefLabel`
+- **Input text:** `FullNameCache` — scientific species name
+- **API key:** Register free at https://biodivportal.gfbio.org/account
 
 ### Land Taxonomy Classifier
 - **Repository:** https://github.com/biodivportal/land-taxonomy-classifier
 - **Endpoint:** `POST /classify` with `{"text": "...", "top_k": 5}`
-- **Input text:** `text_land` — habitat/locality description (`FundortUNdOeko` or `Locality`)
+- **Input text:** `Locality` — collection site / habitat description
 - **Requirements:** Local installation + OpenAI API key (see [INSTALL.md](INSTALL.md))
 
 ---
@@ -223,8 +191,8 @@ nextflow run main.nf -profile test          # generic example CSV
 - Nextflow ≥ 23.04
 - Java 17+
 - Python 3.10+
-- `openpyxl` only needed for one-time xlsx conversion (`pip install openpyxl`)
 - OpenAI API key (for the land-taxonomy-classifier)
-- Docker (optional, for `-profile docker`)
+- BiodivPortal API key (register free at biodivportal.gfbio.org/account)
+- Docker or Singularity (optional, for container profiles)
 
 See [INSTALL.md](INSTALL.md) for complete setup instructions.
