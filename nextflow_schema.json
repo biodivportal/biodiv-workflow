@@ -1,0 +1,142 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema",
+    "$id": "https://raw.githubusercontent.com/biodivportal/biodiv-workflow/main/nextflow_schema.json",
+    "title": "Nextflow pipeline parameters",
+    "description": "BiodivPortal Enrichment Workflow — enriches herbarium records via BiodivPortal Annotator and Land Taxonomy Classifier.",
+    "type": "object",
+    "definitions": {
+        "input_output_options": {
+            "title": "Input / Output",
+            "type": "object",
+            "description": "Define where the pipeline should find input data and save output data.",
+            "fa_icon": "fas fa-terminal",
+            "properties": {
+                "input": {
+                    "type": "string",
+                    "format": "file-path",
+                    "description": "Path to the input CSV file (produced by bin/convert_xlsx.py).",
+                    "fa_icon": "fas fa-file-csv",
+                    "help_text": "A comma-separated file with at minimum the columns: id, text_land, text_biodiv."
+                },
+                "outdir": {
+                    "type": "string",
+                    "format": "directory-path",
+                    "description": "Output directory where enriched_dataset.csv and pipeline info will be written.",
+                    "fa_icon": "fas fa-folder-open",
+                    "default": "results"
+                },
+                "max_records": {
+                    "type": "integer",
+                    "description": "Stop after processing N records. Useful for testing. Leave unset to process all rows.",
+                    "fa_icon": "fas fa-list-ol"
+                }
+            },
+            "required": ["input", "outdir"]
+        },
+        "column_options": {
+            "title": "Column names",
+            "type": "object",
+            "description": "Names of the key columns in the input CSV.",
+            "fa_icon": "fas fa-columns",
+            "properties": {
+                "id_column": {
+                    "type": "string",
+                    "default": "id",
+                    "description": "Name of the unique record identifier column.",
+                    "fa_icon": "fas fa-fingerprint"
+                },
+                "land_text_column": {
+                    "type": "string",
+                    "default": "text_land",
+                    "description": "Column containing habitat/locality text for the Land Taxonomy Classifier.",
+                    "fa_icon": "fas fa-map-marker-alt"
+                },
+                "biodiv_text_column": {
+                    "type": "string",
+                    "default": "text_biodiv",
+                    "description": "Column containing species name text for the BiodivPortal Annotator.",
+                    "fa_icon": "fas fa-leaf"
+                }
+            }
+        },
+        "biodivportal_options": {
+            "title": "BiodivPortal Annotator",
+            "type": "object",
+            "description": "Options for the BiodivPortal ontology annotation service.",
+            "fa_icon": "fas fa-leaf",
+            "properties": {
+                "biodivportal_url": {
+                    "type": "string",
+                    "default": "https://data.biodivportal.gfbio.org",
+                    "description": "Base URL of the BiodivPortal Annotator API.",
+                    "fa_icon": "fas fa-server"
+                },
+                "biodivportal_apikey": {
+                    "type": "string",
+                    "default": "",
+                    "description": "BiodivPortal API key (optional).",
+                    "fa_icon": "fas fa-key"
+                },
+                "biodivportal_ontologies": {
+                    "type": "string",
+                    "default": "",
+                    "description": "Comma-separated ontology IDs to restrict annotation (optional, e.g. 'ENVO,GFBio').",
+                    "fa_icon": "fas fa-filter"
+                }
+            }
+        },
+        "land_classifier_options": {
+            "title": "Land Taxonomy Classifier",
+            "type": "object",
+            "description": "Options for the local Land Taxonomy Classifier FastAPI service.",
+            "fa_icon": "fas fa-mountain",
+            "properties": {
+                "land_classifier_url": {
+                    "type": "string",
+                    "default": "http://127.0.0.1:8000",
+                    "description": "Base URL of the Land Taxonomy Classifier service.",
+                    "fa_icon": "fas fa-server"
+                },
+                "land_classifier_top_k": {
+                    "type": "integer",
+                    "default": 5,
+                    "description": "Number of top CORINE Land Cover classifications to return.",
+                    "fa_icon": "fas fa-sort-numeric-down"
+                },
+                "land_classifier_model": {
+                    "type": "string",
+                    "default": "gpt-4o-mini",
+                    "description": "OpenAI model used by the Land Taxonomy Classifier.",
+                    "fa_icon": "fas fa-robot"
+                }
+            }
+        },
+        "notification_options": {
+            "title": "Notifications",
+            "type": "object",
+            "description": "Email notification on workflow completion.",
+            "fa_icon": "fas fa-envelope",
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "default": "",
+                    "description": "Email address to receive a completion summary. Leave empty to disable.",
+                    "fa_icon": "fas fa-envelope"
+                },
+                "mailfrom": {
+                    "type": "string",
+                    "default": "noreply@biodivportal.org",
+                    "description": "Sender address for notification emails.",
+                    "fa_icon": "fas fa-paper-plane"
+                }
+            }
+        }
+    },
+    "allOf": [
+        { "$ref": "#/definitions/input_output_options" },
+        { "$ref": "#/definitions/column_options" },
+        { "$ref": "#/definitions/biodivportal_options" },
+        { "$ref": "#/definitions/land_classifier_options" },
+        { "$ref": "#/definitions/notification_options" }
+    ]
+}
