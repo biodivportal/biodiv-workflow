@@ -110,34 +110,17 @@ process MERGE_RESULTS {
 // Completion handler
 // ---------------------------------------------------------------------------
 workflow.onComplete {
-    def msg = """\
+    log.info """\
         Workflow execution summary
         --------------------------
         Pipeline    : ${workflow.scriptName}
         Run         : ${workflow.runName}
-        Commandline : ${workflow.commandLine}
         Start       : ${workflow.start}
-        Completed   : ${workflow.complete}
         Duration    : ${workflow.duration}
         Success     : ${workflow.success ? 'OK' : 'FAILED'}
-        workDir     : ${workflow.workDir}
         Exit status : ${workflow.exitStatus}
-        Error       : ${workflow.errorMessage ?: '-'}
-        Container   : ${workflow.containerEngine ?: 'none'}
-        Nextflow    : ${nextflow.version}
+        Output      : ${params.outdir}
         """.stripIndent()
-
-    if (params.email?.trim()) {
-        def enriched = "${params.outdir}/enriched_dataset.csv"
-        def attachments = file(enriched).exists() ? [ file(enriched) ] : []
-        sendMail(
-            to:          params.email,
-            from:        params.mailfrom,
-            subject:     "BiodivPortal Enrichment Workflow: ${workflow.success ? 'completed' : 'FAILED'}",
-            body:        msg,
-            attach:      attachments
-        )
-    }
 }
 
 
