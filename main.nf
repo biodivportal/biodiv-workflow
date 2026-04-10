@@ -123,7 +123,7 @@ workflow.onComplete {
         workDir     : ${workflow.workDir}
         Exit status : ${workflow.exitStatus}
         Error       : ${workflow.errorMessage ?: '-'}
-        Container   : ${workflow.containerEngine} ${workflow.container}
+        Container   : ${workflow.containerEngine ?: 'none'}
         Nextflow    : ${nextflow.version}
         """.stripIndent()
 
