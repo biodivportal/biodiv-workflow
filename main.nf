@@ -128,11 +128,14 @@ workflow.onComplete {
         """.stripIndent()
 
     if (params.email?.trim()) {
+        def enriched = "${params.outdir}/enriched_dataset.csv"
+        def attachments = file(enriched).exists() ? [ file(enriched) ] : []
         sendMail(
-            to:      params.email,
-            from:    params.mailfrom,
-            subject: "BiodivPortal Enrichment Workflow: ${workflow.success ? 'completed' : 'FAILED'}",
-            body:    msg
+            to:          params.email,
+            from:        params.mailfrom,
+            subject:     "BiodivPortal Enrichment Workflow: ${workflow.success ? 'completed' : 'FAILED'}",
+            body:        msg,
+            attach:      attachments
         )
     }
 }
