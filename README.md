@@ -101,7 +101,39 @@ nextflow run main.nf -profile test
 
 Results are written to `test_results/enriched_dataset.csv`.
 
-### 3. Full run
+### 3. Interactive launch with nf-core (recommended)
+
+Install nf-core tools if not already installed:
+
+```bash
+pipx install nf-core
+```
+
+Then launch the interactive parameter wizard:
+
+```bash
+nf-core pipelines launch .
+```
+
+This opens a web interface in your browser where you can fill in all parameters with descriptions and validation. Example values:
+
+| Parameter | Example value |
+|---|---|
+| `input` | `assets/test_20.csv` |
+| `outdir` | `results` |
+| `max_records` | `20` |
+| `biodivportal_apikey` | `your-api-key` |
+| `biodivportal_ontologies` | `NCBITAXON` (or leave empty for all) |
+| `land_classifier_url` | `http://127.0.0.1:8000` |
+| `land_classifier_top_k` | `5` |
+
+After filling in the parameters, click **Launch** or save to `nf-params.json` and run:
+
+```bash
+nextflow run main.nf -params-file nf-params.json
+```
+
+### 4. Full run
 
 ```bash
 nextflow run main.nf \
